@@ -8,7 +8,7 @@ import adminRouter from './routes/admin.routes.js'
 const app = express()
 
 //Database - connect in background, don't block route registration
-connectDB().catch(err => {
+await connectDB().catch(err => {
     console.error('Database connection error:', err.message); 
 });
 
@@ -24,8 +24,7 @@ app.use('/admin', adminRouter)
 const PORT = Number(process.env.PORT) || 3001;
 
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`)
-    console.log(`Access the API at: http://localhost:${PORT}`)
+    console.log(`Server is running on http://localhost:${PORT}`) 
 }) 
 
 export default app; 
