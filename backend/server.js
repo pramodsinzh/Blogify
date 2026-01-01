@@ -2,18 +2,24 @@ import express from 'express'
 import 'dotenv/config'
 import cors from 'cors'
 import connectDB from './configs/db.config.js'
+import adminRouter from './routes/admin.routes.js'
 
 
 const app = express()
 
-//Database
-await connectDB()
+//Database - connect in background, don't block route registration
+connectDB().catch(err => {
+    console.error('Database connection error:', err.message); 
+});
 
 //Middlewares
 app.use(cors())
 app.use(express.json())
 
+//Routes
 app.get('/', (req, res)=> res.send("API is working"))
+// Admin routes
+app.use('/admin', adminRouter) 
 
 const PORT = Number(process.env.PORT) || 3001;
 
