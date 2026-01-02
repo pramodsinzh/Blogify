@@ -14,24 +14,19 @@ export const addBlog = async (req, res) => {
                 message: "Missing required fields"
             })
         }
-        const fileBuffer = fs.readFileSync(imageFile.path)
+        // Create a read stream from the file
+        const fileStream = fs.createReadStream(imageFile.path)
 
         //Upload Image to ImageKit
-        const response = await imagekit.upload({
-            file: fileBuffer,
+        const response = await imagekit.files.upload({
+            file: fileStream,
             fileName: imageFile.originalname,
             folder: "/blogs"
         })
 
-        //optimization throw imageKit URL transformation
-        const optimizedImageUrl = imagekit.url({
-            path: response.filePath,
-            tansformation: [
-                { quality: 'auto' }, //Auto compression
-                { format: 'webp' },  //Convert to modern format
-                { width: '1280' }    //Weidth resizing
-            ]
-        })
+        // Construct optimized URL with transformations
+        // ImageKit transformations are applied via URL parameters
+        const optimizedImageUrl = response.url ? `${response.url}?tr=w-1280,q-auto,f-webp` : response.url;
 
         const image = optimizedImageUrl;
 
