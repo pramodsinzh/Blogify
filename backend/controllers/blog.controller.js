@@ -60,7 +60,7 @@ export const getAllBlogs = async (req, res) => {
 
 export const getBlogById = async (req, res) => {
     try {
-        const { blogId } = req.parse;
+        const { blogId } = req.params;
         const blog = await Blog.findById(blogId)
         if (!blog) {
             return res.json({
@@ -68,6 +68,10 @@ export const getBlogById = async (req, res) => {
                 message: "Blog not found"
             })
         }
+        res.json({
+            success: true,
+            message: blog
+        })
     } catch (error) {
         res.json({
             success: false,
@@ -94,12 +98,38 @@ export const deleteBlogById = async (req, res) => {
 export const togglePublish = async (req, res) => {
     try {
         const { id } = req.body;
-        const blog = await Blog.findById(id);
-        blog.isPublished = !blog.isPublished
-        await blog.save();
+        
+        if (!id) {
+            return res.json({
+                success: false,
+                message: "Blog ID is required"
+            })
+        }
+        
+        // First get the current blog to check if it exists and get current status
+        const currentBlog = await Blog.findById(id);
+        
+        if (!currentBlog) {
+            return res.json({
+                success: false,
+                message: "Blog not found"
+            })
+        }
+        
+        // Convert to boolean if it's stored as string (for backward compatibility)
+        const currentStatus = currentBlog.isPublished === true || currentBlog.isPublished === 'true';
+        
+        // Toggle the isPublished status
+        const updatedBlog = await Blog.findByIdAndUpdate(
+            id,
+            { isPublished: !currentStatus },
+            { new: true } // Return the updated document
+        );
+        
         res.json({
             success: true,
-            message: "Blog status updated successfully!"
+            message: `Blog ${updatedBlog.isPublished ? 'published' : 'unpublished'} successfully!`,
+            data: updatedBlog
         })
 
     } catch (error) {
