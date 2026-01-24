@@ -49,7 +49,7 @@ export const getAllBlogs = async (req, res) => {
         const blogs = await Blog.find({ isPublished: true })
         res.json({
             success: true,
-            message: blogs
+            blogs: blogs
         })
     } catch (error) {
         res.json({
@@ -71,7 +71,7 @@ export const getBlogById = async (req, res) => {
         }
         res.json({
             success: true,
-            message: blog
+            blog: blog
         })
     } catch (error) {
         res.json({
@@ -163,11 +163,11 @@ export const addComment = async (req, res) => {
 
 export const getBlogComments = async (req, res) => {
     try {
-        const {blogId} = req.body;
-        const comments = await Comment.find({ bolg: blogId, isApproved: true}).sort({createdAt: -1});
+        const {blogId} = req.query;
+        const comments = await Comment.find({ blog: blogId, isApproved: true}).sort({createdAt: -1});
         res.json({
             success: true,
-            message: comments
+            comments: comments
         })
     } catch (error) {
         res.json({
