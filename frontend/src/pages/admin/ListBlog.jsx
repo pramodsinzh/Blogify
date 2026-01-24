@@ -1,12 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import { blog_data } from '../../assets/assets';
 import BlogTableItem from '../../components/admin/BlogTableItem';
+import { useAppContext } from '../../context/AppContext';
+import toast from 'react-hot-toast';
 
 const ListBlog = () => {
   const [blogs, setBlogs] = useState([]);
-  
+  const {axios} = useAppContext()
+
   const fetchBlogs = async ( ) => {
-    setBlogs(blog_data)
+    try {
+       const {data} = await axios.get('/admin/blogs')
+       if(data.success){
+        setBlogs(data.blogs)
+       }else{
+        toast.error(data.message)
+       }
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
   useEffect(()=>{
     fetchBlogs()
