@@ -2,6 +2,7 @@ import fs from 'fs'
 import imagekit from '../configs/imageKit.config.js';
 import Blog from '../models/blog.model.js';
 import Comment from '../models/comment.model.js';
+import main from '../configs/gemini.config.js';
 
 export const addBlog = async (req, res) => {
     try {
@@ -86,8 +87,8 @@ export const deleteBlogById = async (req, res) => {
         await Blog.findByIdAndDelete(id)
 
         //Delete comments associaated with this blog
-        await Comment.deleteMany({blog: id})
-        
+        await Comment.deleteMany({ blog: id })
+
         res.json({
             success: true,
             message: "Blog deleted successfully!"
@@ -103,34 +104,34 @@ export const deleteBlogById = async (req, res) => {
 export const togglePublish = async (req, res) => {
     try {
         const { id } = req.body;
-        
+
         if (!id) {
             return res.json({
                 success: false,
                 message: "Blog ID is required"
             })
         }
-        
+
         // First get the current blog to check if it exists and get current status
         const currentBlog = await Blog.findById(id);
-        
+
         if (!currentBlog) {
             return res.json({
                 success: false,
                 message: "Blog not found"
             })
         }
-        
+
         // Convert to boolean if it's stored as string (for backward compatibility)
         const currentStatus = currentBlog.isPublished === true || currentBlog.isPublished === 'true';
-        
+
         // Toggle the isPublished status
         const updatedBlog = await Blog.findByIdAndUpdate(
             id,
             { isPublished: !currentStatus },
             { new: true } // Return the updated document
         );
-        
+
         res.json({
             success: true,
             message: `Blog ${updatedBlog.isPublished ? 'published' : 'unpublished'} successfully!`,
@@ -147,8 +148,8 @@ export const togglePublish = async (req, res) => {
 
 export const addComment = async (req, res) => {
     try {
-        const {blog, name, content} = req.body;
-        await Comment.create({blog, name, content});
+        const { blog, name, content } = req.body;
+        await Comment.create({ blog, name, content });
         res.json({
             success: true,
             message: "Comment added for review"
@@ -163,8 +164,8 @@ export const addComment = async (req, res) => {
 
 export const getBlogComments = async (req, res) => {
     try {
-        const {blogId} = req.query;
-        const comments = await Comment.find({ blog: blogId, isApproved: true}).sort({createdAt: -1});
+        const { blogId } = req.query;
+        const comments = await Comment.find({ blog: blogId, isApproved: true }).sort({ createdAt: -1 });
         res.json({
             success: true,
             comments: comments
@@ -174,5 +175,15 @@ export const getBlogComments = async (req, res) => {
             success: false,
             message: error.message
         })
+    }
+}
+
+export const generateContent = async (prompt) => {
+    try {
+        const { prompt } = req.body;
+        const content = await main(prompt + 'Generate a blog content for this topic in simple text format')
+        res.json({ success: true, content })
+    } catch (error) {
+        res.json({ success: false, message: error.message })
     }
 }
