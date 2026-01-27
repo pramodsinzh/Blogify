@@ -178,10 +178,10 @@ export const getBlogComments = async (req, res) => {
     }
 }
 
-export const generateContent = async (prompt) => {
+export const generateContent = async (req, res) => {
     try {
         const { prompt } = req.body;
-        const content = await main(prompt + 'Generate a blog content for this topic in simple text format')
+        const content = await main(prompt + '. Generate a well-structured blog post in markdown format with proper headings (using # for main title, ## for section headings), paragraphs, and bullet points. Make it professional and engaging.')
         res.json({ success: true, content })
     } catch (error) {
         res.json({ success: false, message: error.message })
