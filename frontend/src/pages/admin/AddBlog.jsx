@@ -3,11 +3,13 @@ import { assets, blogCategories } from '../../assets/assets'
 import Quill from 'quill'
 import { useAppContext } from '../../context/AppContext'
 import toast from 'react-hot-toast'
+import { marked } from 'marked'
 
 const AddBlog = () => {
 
   const { axios } = useAppContext()
   const [isAdding, setIsAdding] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const editorRef = useRef(null)
   const quillRef = useRef(null)
@@ -19,7 +21,36 @@ const AddBlog = () => {
   const [isPublished, setIsPublished] = useState(false);
 
   const generateContent = async () => {
-
+    if(!title) return toast.error('Please enter a title')
+      try {
+        setLoading(true)
+        const {data} = await axios.post('/blog/generate', {prompt: title})
+        if(data.success){
+          // Clean and format the content
+          let content = data.content.trim()
+          
+          // Ensure proper markdown formatting
+          // Convert multiple newlines to proper paragraph breaks
+          content = content.replace(/\n{3,}/g, '\n\n')
+          
+          // Parse markdown to HTML
+          const htmlContent = marked.parse(content)
+          
+          // Set content using Quill's API for better formatting
+          const delta = quillRef.current.clipboard.convert({ html: htmlContent })
+          quillRef.current.setContents(delta, 'silent')
+          
+          // Alternative: Direct HTML insertion if delta doesn't work well
+          // quillRef.current.root.innerHTML = htmlContent
+        }else{
+          toast.error(data.message)
+        }
+        
+      } catch (error) {
+        toast.error(error.message)
+      }finally{
+        setLoading(false)
+      }
   }
 
   const onSubmitHandle = async (e) => {
@@ -81,7 +112,15 @@ const AddBlog = () => {
         <p className='mt-4'>Blog Description</p>
         <div className="max-w-lg h-74 pb-16 sm:pb-10 pt-2 relative">
           <div ref={editorRef}></div>
-          <button type='button' onClick={generateContent} className='absolute bottom-1 right-2 ml-2 text-xs text-white bg-black/70 px-4 py-1.5 rounded hover:underline cursor-pointer '>Generate with AI</button>
+          {loading && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                <p className="text-sm text-gray-600 font-medium">Generating content with AI...</p>
+              </div>
+            </div>
+          )}
+          <button type='button' disabled={loading} onClick={generateContent} className='absolute bottom-1 right-2 ml-2 text-xs text-white bg-black/70 px-4 py-1.5 rounded hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'>Generate with AI</button>
         </div>
 
         <p className='mt-4'>Blog Category</p>
