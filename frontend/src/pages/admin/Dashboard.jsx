@@ -3,6 +3,7 @@ import { assets, dashboard_data } from '../../assets/assets';
 import BlogTableItem from '../../components/admin/BlogTableItem';
 import { useAppContext } from '../../context/AppContext';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -13,6 +14,7 @@ const Dashboard = () => {
   })
 
   const { axios } = useAppContext()
+  const navigate = useNavigate()
 
   const fetchDashbord = async () => {
     try {
@@ -37,7 +39,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-white p-4 min-w-58 rounded shadow cursor-pointer hover:scale-105 transition-all">
+        <div onClick={() => navigate('/admin/comments')} className="flex items-center gap-4 bg-white p-4 min-w-58 rounded shadow cursor-pointer hover:scale-105 transition-all">
           <img src={assets.dashboard_icon_2} alt="" />
           <div className="">
             <p className='text-xl font-semibold text-gray-600'>{dashboardData.comments}</p>
@@ -45,7 +47,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-white p-4 min-w-58 rounded shadow cursor-pointer hover:scale-105 transition-all">
+        <div onClick={() => navigate('/admin/ListBlog')} className="flex items-center gap-4 bg-white p-4 min-w-58 rounded shadow cursor-pointer hover:scale-105 transition-all">
           <img src={assets.dashboard_icon_3} alt="" />
           <div className="">
             <p className='text-xl font-semibold text-gray-600'>{dashboardData.drafts}</p>

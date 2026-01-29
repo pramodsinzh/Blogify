@@ -10,7 +10,9 @@
 }
 
 @theme {
-    --color-primary: #5044E5;
+    --color-primary: #009688;
+    --color-primary-hover: #00695C;
+    --color-primary-highlight: #E0F2F1;
 }
 
 .rich-text { font-size: 15px;  }
@@ -37,4 +39,4 @@
 
 .rich-text li { margin-bottom: 8px; }
 
-.rich-text a { color: #007AFF }
+.rich-text a { color: #009688 }
