@@ -31,8 +31,9 @@ export const addBlog = async (req, res) => {
         const optimizedImageUrl = response.url ? `${response.url}?tr=w-1280,q-auto,f-webp` : response.url;
 
         const image = optimizedImageUrl;
+        const imageKitFileId = response.fileId;
 
-        await Blog.create({ title, subTitle, description, category, image, isPublished })
+        await Blog.create({ title, subTitle, description, category, image, imageKitFileId, isPublished })
         res.json({
             success: true,
             message: "Blog added successfully"
@@ -84,21 +85,39 @@ export const getBlogById = async (req, res) => {
 export const deleteBlogById = async (req, res) => {
     try {
         const { id } = req.body;
-        await Blog.findByIdAndDelete(id)
+        const blog = await Blog.findById(id);
+        if (!blog) {
+            return res.json({
+                success: false,
+                message: "Blog not found"
+            });
+        }
 
-        //Delete comments associaated with this blog
-        await Comment.deleteMany({ blog: id })
+        // Delete image from ImageKit if we have the file ID
+        if (blog.imageKitFileId) {
+            try {
+                await imagekit.files.delete(blog.imageKitFileId);
+            } catch (imageKitError) {
+                // Log but don't fail the request - blog may have been created before we stored fileId
+                console.error("ImageKit delete failed:", imageKitError.message);
+            }
+        }
+
+        await Blog.findByIdAndDelete(id);
+
+        //Delete comments associated with this blog
+        await Comment.deleteMany({ blog: id });
 
         res.json({
             success: true,
             message: "Blog deleted successfully!"
-        })
+        });
 
     } catch (error) {
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
 }
 export const togglePublish = async (req, res) => {
