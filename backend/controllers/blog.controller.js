@@ -3,6 +3,31 @@ import imagekit from '../configs/imageKit.config.js';
 import Blog from '../models/blog.model.js';
 import Comment from '../models/comment.model.js';
 import main from '../configs/gemini.config.js';
+import { getIO } from '../configs/socket.config.js';
+import { notifySubscribersAboutNewBlog } from '../services/notificationService.js';
+
+/**
+ * Emit socket event and send email notifications for a newly published blog.
+ * Non-blocking; does not throw.
+ */
+function notifyNewBlogPublished(blog) {
+    const payload = {
+        id: blog._id,
+        title: blog.title,
+        subTitle: blog.subTitle,
+        category: blog.category,
+        image: blog.image,
+        createdAt: blog.createdAt
+    };
+    const io = getIO();
+    if (io) {
+        io.emit('newBlog', payload);
+    }
+    const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
+    notifySubscribersAboutNewBlog(payload, frontendURL).catch(error => {
+        console.error('Error sending email notifications:', error);
+    });
+}
 
 export const addBlog = async (req, res) => {
     try {
@@ -33,7 +58,12 @@ export const addBlog = async (req, res) => {
         const image = optimizedImageUrl;
         const imageKitFileId = response.fileId;
 
-        await Blog.create({ title, subTitle, description, category, image, imageKitFileId, isPublished })
+        const newBlog = await Blog.create({ title, subTitle, description, category, image, imageKitFileId, isPublished })
+
+        if (isPublished) {
+            notifyNewBlogPublished(newBlog);
+        }
+
         res.json({
             success: true,
             message: "Blog added successfully"
@@ -150,6 +180,10 @@ export const togglePublish = async (req, res) => {
             { isPublished: !currentStatus },
             { new: true } // Return the updated document
         );
+
+        if (updatedBlog.isPublished && !currentStatus) {
+            notifyNewBlogPublished(updatedBlog);
+        }
 
         res.json({
             success: true,

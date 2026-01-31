@@ -7,6 +7,7 @@ import Dashboard from './pages/admin/Dashboard'
 import AddBlog from './pages/admin/AddBlog'
 import ListBlog from './pages/admin/ListBlog'
 import Comments from './pages/admin/Comments'
+import Subscribers from './pages/admin/Subscribers'
 import Login from './components/admin/Login'
 import 'quill/dist/quill.snow.css'
 import { Toaster } from 'react-hot-toast'
@@ -26,6 +27,7 @@ const App = () => {
           <Route path='addBlog' element={<AddBlog />} />
           <Route path='listBlog' element={<ListBlog />} />
           <Route path='comments' element={<Comments />} />
+          <Route path='subscribers' element={<Subscribers />} />
         </Route>
       </Routes>
     </div>

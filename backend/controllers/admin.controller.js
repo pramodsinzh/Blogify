@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import Blog from '../models/blog.model.js';
 import Comment from '../models/comment.model.js';
+import Subscription from '../models/subscription.model.js';
 
 export const adminLogin = async (req, res)=> {
     try {
@@ -97,6 +98,45 @@ export const approveCommentById = async (req, res)=>{
         })
     } catch (error) {
          res.json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+export const getAllSubscriptions = async (req, res) => {
+    try {
+        const subscriptions = await Subscription.find({ isActive: true });
+        res.json({
+            success: true,
+            count: subscriptions.length,
+            subscriptions: subscriptions
+        })
+    } catch (error) {
+        res.json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+export const deleteSubscriber = async (req, res) => {
+    try {
+        const {id} = req.body;
+        const subscriber = await Subscription.findById(id)
+        if(!subscriber) {
+            return res.json({
+                success: false,
+                message: "Subscriber not found!"
+            })
+        }
+        await Subscription.findByIdAndDelete(id)
+        return res.json({
+            success: true,
+            message: "Subscriber removed successfully!"
+        })
+    } catch (error) {
+        return res.json({
             success: false,
             message: error.message
         })
