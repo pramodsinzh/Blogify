@@ -43,7 +43,7 @@ export const getAllComments = async (req, res)=>{
         const comments = await Comment.find({}).populate("blog").sort({createdAt: -1})
         res.json({
             success: true,
-            comments
+            comments: comments
         })
     } catch (error) {
          res.json({
@@ -91,10 +91,31 @@ export const deleteCommentById = async (req, res)=>{
 export const approveCommentById = async (req, res)=>{
     try {
          const {id} = req.body;
-         await Comment.findByIdAndUpdate(id, {isApproved: true})
+
+         if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Comment id is required"
+            });
+         }
+
+         const updatedComment = await Comment.findByIdAndUpdate(
+            id,
+            { isApproved: true },
+            { new: true }
+         );
+
+         if (!updatedComment) {
+            return res.status(404).json({
+                success: false,
+                message: "Comment not found"
+            });
+         }
+
         res.json({
             success: true,
-            message: "Comment approved successfully!"
+            message: "Comment approved successfully!",
+            data: updatedComment
         })
     } catch (error) {
          res.json({

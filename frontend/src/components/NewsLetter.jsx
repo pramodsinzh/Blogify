@@ -84,9 +84,9 @@ const NewsLetter = () => {
           type="button"
           onClick={handleUnsubscribe}
           disabled={busy}
-          className="text-sm font-medium text-primary/80 hover:text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary transition-all duration-300 ease-out disabled:opacity-40 disabled:cursor-not-allowed"
+          className="text-sm font-medium text-primary/80 hover:text-primary italic underline underline-offset-4 decoration-primary/40 hover:decoration-primary transition-all duration-300 ease-out disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isUnsubmitting ? "Unsubscribing..." : "Already subscribed? Unsubscribe anytime"}
+          {isUnsubmitting ? "Unsubscribing..." : "Already subscribed? Unsubscribe anytime."}
         </button>
 
       </form>

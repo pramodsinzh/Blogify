@@ -3,11 +3,11 @@ import imagekit from '../configs/imageKit.config.js';
 import Blog from '../models/blog.model.js';
 import Comment from '../models/comment.model.js';
 import main from '../configs/gemini.config.js';
-import { getIO } from '../configs/socket.config.js';
 import { notifySubscribersAboutNewBlog } from '../services/notificationService.js';
+import mongoose from "mongoose";
 
 /**
- * Emit socket event and send email notifications for a newly published blog.
+ * Send email notifications for a newly published blog.
  * Non-blocking; does not throw.
  */
 function notifyNewBlogPublished(blog) {
@@ -19,10 +19,6 @@ function notifyNewBlogPublished(blog) {
         image: blog.image,
         createdAt: blog.createdAt
     };
-    const io = getIO();
-    if (io) {
-        io.emit('newBlog', payload);
-    }
     const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
     notifySubscribersAboutNewBlog(payload, frontendURL).catch(error => {
         console.error('Error sending email notifications:', error);
@@ -202,10 +198,11 @@ export const togglePublish = async (req, res) => {
 export const addComment = async (req, res) => {
     try {
         const { blog, name, content } = req.body;
-        await Comment.create({ blog, name, content });
+        const comment = await Comment.create({ blog, name, content });
         res.json({
             success: true,
-            message: "Comment added for review"
+            message: "Comment added for review",
+            data: comment
         })
     } catch (error) {
         res.json({
@@ -218,18 +215,37 @@ export const addComment = async (req, res) => {
 export const getBlogComments = async (req, res) => {
     try {
         const { blogId } = req.query;
-        const comments = await Comment.find({ blog: blogId, isApproved: true }).sort({ createdAt: -1 });
+
+        if (!blogId) {
+            return res.status(400).json({
+                success: false,
+                message: "blogId query parameter is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(blogId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid blog ID"
+            });
+        }
+
+        const comments = await Comment.find({
+            blog: new mongoose.Types.ObjectId(blogId),
+            isApproved: true
+        }).sort({ createdAt: -1 });
+
         res.json({
             success: true,
-            comments: comments
-        })
+            comments
+        });
     } catch (error) {
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 export const generateContent = async (req, res) => {
     try {
