@@ -33,10 +33,12 @@ import dashboard_icon_3 from './dashboard_icon_3.svg'
 import dashboard_icon_4 from './dashboard_icon_4.svg'
 import subscriber_icon from './subscriber_icon.svg'
 import nothing from './nothing.svg'
+import linkdin_logo from './linkdin_logo.svg'
 
 
 export const assets = {
     facebook_icon,
+    linkdin_logo,
     nothing,
     googleplus_icon,
     twitter_icon,

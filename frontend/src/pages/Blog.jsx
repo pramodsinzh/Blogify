@@ -57,6 +57,33 @@ const Blog = () => {
   }
 
 
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+
+  const shareOnFacebook = () => {
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      'facebook-share',
+      'width=600,height=400'
+    )
+  }
+
+  const shareOnTwitter = () => {
+    const text = data?.title || 'Check out this blog post!'
+    window.open(
+      `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`,
+      'twitter-share',
+      'width=550,height=420'
+    )
+  }
+
+  const shareOnLinkedIn = () => {
+    window.open(
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+      'linkedin-share',
+      'width=600,height=550'
+    )
+  }
+
   useEffect(() => {
     fetchBlogData()
     fetchComments()
@@ -113,10 +140,34 @@ const Blog = () => {
       {/* Share Buttons */}
       <div className="my-24 max-w-3xl mx-auto">
         <p className="font-semibold my-4">Share this blog on social media</p>
-        <div className="flex">
-          <img src={assets.facebook_icon} width={50} alt="" />
-          <img src={assets.twitter_icon} width={50} alt="" />
-          <img src={assets.googleplus_icon} width={50} alt="" />
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={shareOnFacebook}
+            className="p-2 rounded-lg hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+            aria-label="Share on Facebook"
+            title="Facebook"
+          >
+            <img src={assets.facebook_icon} width={50} height={50} alt="Facebook" className="cursor-pointer" />
+          </button>
+          <button
+            type="button"
+            onClick={shareOnTwitter}
+            className="p-2 rounded-lg hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+            aria-label="Share on X (Twitter)"
+            title="X"
+          >
+            <img src={assets.twitter_icon} width={50} height={50} alt="X (Twitter)" className="cursor-pointer" />
+          </button>
+          <button
+            type="button"
+            onClick={shareOnLinkedIn}
+            className="p-2 rounded-lg hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+            aria-label="Share on LinkedIn"
+            title="LinkedIn"
+          >
+            <img src={assets.linkdin_logo} width={50} height={50} alt="LinkedIn" className="cursor-pointer" />
+          </button>
         </div>
       </div>
       <Footer/>
