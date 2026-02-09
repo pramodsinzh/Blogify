@@ -250,16 +250,12 @@ export const dashboard_data = {
 }
 
 export const footer_data = [
-      {
-          title: "Quick Links",
-          links: ["Home", "Best Sellers", "Offers & Deals", "Contact Us", "FAQs"]
-      },
-      {
-          title: "Need Help?",
-          links: ["Delivery Information", "Return & Refund Policy", "Payment Methods", "Track your Order", "Contact Us"]
-      },
-      {
-          title: "Follow Us",
-          links: ["Instagram", "Twitter", "Facebook", "YouTube"]
-      }
-  ];
+    {
+        title: "Quick Links",
+        links: [
+            { label: "About Us", href: "/about" },
+            { label: "FAQs", href: "/faqs" },
+            { label: "Contact Us", href: "/contact" }
+        ]
+    }
+];
