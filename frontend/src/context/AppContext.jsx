@@ -20,7 +20,9 @@ export const AppProvider = ({ children }) => {
         try {
             const { data } = await axios.get('/blog/all')
             if (data.success) {
-                setBlogs(Array.isArray(data.blogs) ? data.blogs : [])
+                const list = Array.isArray(data.blogs) ? data.blogs : []
+                const sorted = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                setBlogs(sorted)
             } else {
                 toast.error(data.message)
             }
