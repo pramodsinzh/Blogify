@@ -1,8 +1,36 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { useAppContext } from '../context/AppContext'
+import toast from 'react-hot-toast'
 
 const Contact = () => {
+  const { axios } = useAppContext()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [message, setMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    try {
+      const { data } = await axios.post('/contact/send', { name, email, message })
+      if (data.success) {
+        toast.success(data.message)
+        setName('')
+        setEmail('')
+        setMessage('')
+      } else {
+        toast.error(data.message || 'Something went wrong.')
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Failed to send message.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <>
       <Navbar />
@@ -17,11 +45,7 @@ const Contact = () => {
 
           <form
             className="space-y-4 bg-white/70 border border-gray-200 rounded-xl p-6 shadow-sm mt-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              // You can wire this up to your backend or a service like Formspree later.
-              alert('Thanks for reaching out! This contact form is a demo in this version.')
-            }}
+            onSubmit={handleSubmit}
           >
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
@@ -32,6 +56,8 @@ const Contact = () => {
                   id="name"
                   type="text"
                   required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
                   placeholder="Your name"
                 />
@@ -44,6 +70,8 @@ const Contact = () => {
                   id="email"
                   type="email"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
                   placeholder="you@example.com"
                 />
@@ -58,6 +86,8 @@ const Contact = () => {
                 id="message"
                 required
                 rows={4}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
                 placeholder="Tell us how we can help..."
               />
@@ -65,9 +95,10 @@ const Contact = () => {
 
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Send Message
+              {isSubmitting ? 'Sending...' : 'Send Message'}
             </button>
           </form>
         </section>
@@ -79,4 +110,3 @@ const Contact = () => {
 }
 
 export default Contact
-

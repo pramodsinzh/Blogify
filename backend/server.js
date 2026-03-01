@@ -5,6 +5,7 @@ import connectDB from './configs/db.config.js'
 import adminRouter from './routes/admin.routes.js'
 import blogRouter from './routes/blog.routes.js'
 import subscriptionRouter from './routes/subscription.routes.js'
+import contactRouter from './routes/contact.routes.js'
 
 
 const app = express()
@@ -23,7 +24,8 @@ app.get('/', (req, res)=> res.send("API is working"))
 // Admin routes
 app.use('/admin', adminRouter) 
 app.use('/blog', blogRouter)
-app.use('/subscription', subscriptionRouter) 
+app.use('/subscription', subscriptionRouter)
+app.use('/contact', contactRouter)
 
 const PORT = Number(process.env.PORT) || 3001;
 
