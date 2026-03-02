@@ -8,7 +8,7 @@ const BlogTableItem = ({blog, fetchBlogs, index}) => {
     const {title, createdAt} = blog;
     const BlogDate = new Date(createdAt)
 
-    const {axios} = useAppContext()
+    const { axios, fetchBlogs: refreshPublicBlogs } = useAppContext()
 
     const deleteBlog = async () => {
       const confirm = window.confirm('Are you sure want to delete this blog?')
@@ -17,7 +17,12 @@ const BlogTableItem = ({blog, fetchBlogs, index}) => {
         const {data} = await axios.delete('/blog/delete', { data: { id: blog._id } })
         if(data.success){
           toast.success(data.message)
+          // Refresh admin table
           await fetchBlogs()
+          // Refresh public blog list in context
+          if (typeof refreshPublicBlogs === 'function') {
+            await refreshPublicBlogs()
+          }
         }else{
           toast.error(data.message)
         }
@@ -31,7 +36,12 @@ const BlogTableItem = ({blog, fetchBlogs, index}) => {
         const {data} = await axios.post('/blog/toggle-publish', {id: blog._id})
         if(data.success){
           toast.success(data.message)
+          // Refresh admin table
           await fetchBlogs()
+          // Refresh public blog list in context
+          if (typeof refreshPublicBlogs === 'function') {
+            await refreshPublicBlogs()
+          }
         }else{
           toast.error(data.message)
         }

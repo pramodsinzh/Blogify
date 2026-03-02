@@ -7,7 +7,7 @@ import { marked } from 'marked'
 
 const AddBlog = () => {
 
-  const { axios } = useAppContext()
+  const { axios, fetchBlogs } = useAppContext()
   const [isAdding, setIsAdding] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -75,6 +75,13 @@ const AddBlog = () => {
         setTitle('')
         quillRef.current.root.innerHTML = ''
         setCategory('Startup')
+        setSubTitle('')
+        setIsPublished(false)
+
+        // Refresh global blogs so public pages update without full reload
+        if (typeof fetchBlogs === 'function') {
+          await fetchBlogs()
+        }
       } else {
         toast.error(data.message)
       }
