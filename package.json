@@ -1,0 +1,28 @@
+{
+  "name": "blogify",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:frontend": "npm start --prefix frontend",
+    "start:backend": "npm start --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "server:backend": "npm run server --prefix backend",
+    "project": "concurrently \"npm run dev:frontend\" \"npm run server:backend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pramodsinzh/Blogify.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/pramodsinzh/Blogify/issues"
+  },
+  "homepage": "https://github.com/pramodsinzh/Blogify#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
