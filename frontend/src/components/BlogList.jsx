@@ -1,29 +1,76 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { assets, blogCategories } from '../assets/assets'
 import { motion } from "motion/react"
 import BlogCard from './BlogCard'
 import BlogListSkeleton from './BlogListSkeleton'
 import { useAppContext } from '../context/AppContext'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
-const BlogList = () => {
-  const [menu, setMenu] = useState("All")
+const BlogList = ({ maxRows = 2, showSeeAllButton = true } = {}) => {
+  const gridRef = useRef(null)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  const menuFromQuery = searchParams.get('menu')
+
+  const [menu, setMenu] = useState(() => menuFromQuery || "All")
+  const [columnCount, setColumnCount] = useState(null)
+
   const { blogs, input } = useAppContext()
+
+  useEffect(() => {
+    if (menuFromQuery) setMenu(menuFromQuery)
+    else setMenu("All")
+  }, [menuFromQuery])
+
+  useEffect(() => {
+    const computeColumnCount = () => {
+      if (!gridRef.current) return null
+      const style = window.getComputedStyle(gridRef.current)
+      const cols = style.gridTemplateColumns
+      if (!cols || cols === 'none' || cols.includes('repeat(')) return null
+
+      const parts = cols.split(' ').filter(Boolean)
+      const n = parts.length
+      return n > 0 ? n : null
+    }
+
+    const update = () => setColumnCount(computeColumnCount())
+    update()
+
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  const filteredBlogs = useMemo(() => {
+    if (!Array.isArray(blogs)) return []
+    if (input === '') return blogs
+
+    const q = input.toLowerCase()
+    return blogs.filter(
+      (blog) =>
+        (blog.title && blog.title.toLowerCase().includes(q)) ||
+        (blog.category && blog.category.toLowerCase().includes(q))
+    )
+  }, [blogs, input])
+
+  const baseBlogs = useMemo(() => {
+    return filteredBlogs.filter((blog) => menu === "All" ? true : blog.category === menu)
+  }, [filteredBlogs, menu])
+
+  const shouldLimit = typeof maxRows === 'number' && maxRows > 0
+  const visibleLimitCount = shouldLimit ? maxRows * (columnCount || 4) : null
+  const visibleBlogs = shouldLimit ? baseBlogs.slice(0, visibleLimitCount) : baseBlogs
+
+  const isEmpty = baseBlogs.length === 0
+
+  const handleSeeAll = () => {
+    const qs = menu && menu !== 'All' ? `?menu=${encodeURIComponent(menu)}` : ''
+    navigate(`/see-all-blogs${qs}`)
+  }
 
   // blogs is null while fetching from MongoDB
   if (!Array.isArray(blogs)) return <BlogListSkeleton />
-
-  const filteredBlogs = () => {
-    if (input === '') return blogs
-    return blogs.filter((blog) =>
-      (blog.title && blog.title.toLowerCase().includes(input.toLowerCase())) ||
-      (blog.category && blog.category.toLowerCase().includes(input.toLowerCase()))
-    )
-  }
-
-  const displayBlogs = filteredBlogs().filter(
-    (blog) => menu === "All" ? true : blog.category === menu
-  )
-  const isEmpty = displayBlogs.length === 0
 
   return (
     <>
@@ -47,7 +94,10 @@ const BlogList = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 mb-24 mx-8 sm:mx-16 xl:mx-40">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 mb-24 mx-8 sm:mx-16 xl:mx-40"
+      >
         {isEmpty ? (
           <div className="col-span-full flex flex-col items-center justify-center py-20 px-6 text-center">
             <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
@@ -61,7 +111,7 @@ const BlogList = () => {
             </p>
           </div>
         ) : (
-          displayBlogs.map((blog) => (
+          visibleBlogs.map((blog) => (
             <motion.div
               key={blog._id}
               initial={{ opacity: 0, y: 16 }}
@@ -73,6 +123,17 @@ const BlogList = () => {
           ))
         )}
       </div>
+
+      {showSeeAllButton && shouldLimit && baseBlogs.length > visibleBlogs.length && (
+        <div className="flex justify-center -mt-6 mb-24 px-6">
+          <button
+            onClick={handleSeeAll}
+            className="rounded-full bg-primary text-white px-10 py-2.5 text-sm hover:scale-105 transition-all cursor-pointer shadow-sm"
+          >
+            See all blogs
+          </button>
+        </div>
+      )}
     </>
   )
 }
