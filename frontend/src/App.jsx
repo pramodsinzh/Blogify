@@ -1,5 +1,5 @@
 import React from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Blog from './pages/Blog'
 import About from './pages/About'
@@ -11,17 +11,24 @@ import AddBlog from './pages/admin/AddBlog'
 import ListBlog from './pages/admin/ListBlog'
 import Comments from './pages/admin/Comments'
 import Subscribers from './pages/admin/Subscribers'
-import Login from './components/admin/Login'
 import 'quill/dist/quill.snow.css'
 import { Toaster } from 'react-hot-toast'
 import { useAppContext } from './context/AppContext'
 import SeeAllBlogs from './pages/SeeAllBlogs'
+import { SignIn } from '@clerk/react'
+import MyBlogs from './pages/MyBlogs'
+import Navbar from './components/Navbar'
 
 const App = () => {
+
+  const isAdminRoute = useLocation().pathname.startsWith('/admin')
   const { token } = useAppContext()
+  const { user } = useAppContext()
+
   return (
     <div>
       <Toaster />
+      {!isAdminRoute && <Navbar/>}
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/see-all-blogs' element={<SeeAllBlogs />} />
@@ -29,8 +36,9 @@ const App = () => {
         <Route path='/about' element={<About />} />
         <Route path='/faqs' element={<Faqs />} />
         <Route path='/contact' element={<Contact />} />
+        <Route path='/my-blogs' element={<MyBlogs />} />
 
-        <Route path='/admin' element={token ? <Layout /> : <Login />}>
+        <Route path='/admin/*' element={user ? <Layout /> : (<div className="min-h-screen flex justify-center items-center"><SignIn fallbackRedirectUrl={'/admin'} /></div>)}>
           <Route index element={<Dashboard />} />
           <Route path='addBlog' element={<AddBlog />} />
           <Route path='listBlog' element={<ListBlog />} />
