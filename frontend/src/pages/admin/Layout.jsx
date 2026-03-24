@@ -1,22 +1,24 @@
-import React from 'react'
-import { assets } from '../../assets/assets'
+import React, { useEffect } from 'react' 
 import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/admin/Sidebar';
 import { useAppContext } from '../../context/AppContext';
 import Navbar from '../../components/Navbar';
+import { Loader } from '../../components/Loader';
 
 const Layout = () => {
-     const { axios, setToken, navigate} = useAppContext()
+     const { axios, setToken, navigate, isAdmin, fetchIsAdmin} = useAppContext()
 
-    const logout = () => {
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-      setToken(null)
-      navigate('/')
-    }
-    
+    // const logout = () => {
+    //   localStorage.removeItem('token');
+    //   delete axios.defaults.headers.common['Authorization'];
+    //   setToken(null)
+    //   navigate('/')
+    // }
+    useEffect(()=>{
+      fetchIsAdmin()
+    }, [])
 
-  return (
+  return isAdmin ?  (
     < > 
         {/* <div className="flex items-center justify-between py-2 px-4 sm:px-12 border-b border-gray-200 h-17.5">
             <img src={assets.logo} className='w-32 sm:w-40 cursor-pointer' onClick={() => navigate('/')} alt="" />
@@ -28,7 +30,7 @@ const Layout = () => {
             <Outlet />
         </div>
     </>
-  )
+  ) : <Loader />
 }
 
 export default Layout

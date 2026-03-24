@@ -18,6 +18,7 @@ import SeeAllBlogs from './pages/SeeAllBlogs'
 import { SignIn } from '@clerk/react'
 import MyBlogs from './pages/MyBlogs'
 import Navbar from './components/Navbar'
+import UserAddBlog from './pages/UserAddBlog'
 
 const App = () => {
 
@@ -28,15 +29,20 @@ const App = () => {
   return (
     <div>
       <Toaster />
-      {!isAdminRoute && <Navbar/>}
+      {/* {!isAdminRoute && <Navbar/>} */}
       <Routes>
         <Route path='/' element={<Home />} />
-        <Route path='/see-all-blogs' element={<SeeAllBlogs />} />
         <Route path='/blog/:id' element={<Blog />} />
         <Route path='/about' element={<About />} />
         <Route path='/faqs' element={<Faqs />} />
         <Route path='/contact' element={<Contact />} />
-        <Route path='/my-blogs' element={<MyBlogs />} />
+
+        <Route path='/user' element={user ? <Layout /> : (<div className="min-h-screen flex justify-center items-center"><SignIn fallbackRedirectUrl={'/'} /></div>)}>
+
+        </Route>
+          <Route path='/add-blog' element={<UserAddBlog />} />
+          <Route path='/see-all-blogs' element={<SeeAllBlogs />} />
+          <Route path='/my-blogs' element={<MyBlogs />} />
 
         <Route path='/admin/*' element={user ? <Layout /> : (<div className="min-h-screen flex justify-center items-center"><SignIn fallbackRedirectUrl={'/admin'} /></div>)}>
           <Route index element={<Dashboard />} />
