@@ -1,5 +1,5 @@
 import React from 'react'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import Home from './pages/Home'
 import Blog from './pages/Blog'
 import About from './pages/About'
@@ -16,14 +16,11 @@ import { Toaster } from 'react-hot-toast'
 import { useAppContext } from './context/AppContext'
 import SeeAllBlogs from './pages/SeeAllBlogs'
 import { SignIn } from '@clerk/react'
-import MyBlogs from './pages/MyBlogs'
-import Navbar from './components/Navbar'
+import MyBlogs from './pages/MyBlogs' 
 import UserAddBlog from './pages/UserAddBlog'
 
 const App = () => {
 
-  const isAdminRoute = useLocation().pathname.startsWith('/admin')
-  const { token } = useAppContext()
   const { user } = useAppContext()
 
   return (
@@ -37,12 +34,9 @@ const App = () => {
         <Route path='/faqs' element={<Faqs />} />
         <Route path='/contact' element={<Contact />} />
 
-        <Route path='/user' element={user ? <Layout /> : (<div className="min-h-screen flex justify-center items-center"><SignIn fallbackRedirectUrl={'/'} /></div>)}>
-
-        </Route>
-          <Route path='/add-blog' element={<UserAddBlog />} />
-          <Route path='/see-all-blogs' element={<SeeAllBlogs />} />
-          <Route path='/my-blogs' element={<MyBlogs />} />
+        <Route path='/add-blog' element={user ? <UserAddBlog /> : (<div className="min-h-screen flex justify-center items-center"><SignIn fallbackRedirectUrl={'/add-blog'} /></div>)} />
+        <Route path='/my-blogs' element={user ? <MyBlogs /> : (<div className="min-h-screen flex justify-center items-center"><SignIn fallbackRedirectUrl={'/my-blogs'} /></div>)} />
+        <Route path='/see-all-blogs' element={<SeeAllBlogs />} />
 
         <Route path='/admin/*' element={user ? <Layout /> : (<div className="min-h-screen flex justify-center items-center"><SignIn fallbackRedirectUrl={'/admin'} /></div>)}>
           <Route index element={<Dashboard />} />

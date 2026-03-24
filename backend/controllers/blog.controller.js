@@ -3,27 +3,34 @@ import imagekit from '../configs/imageKit.config.js';
 import Blog from '../models/blog.model.js';
 import Comment from '../models/comment.model.js';
 import main from '../configs/gemini.config.js';
-import { notifySubscribersAboutNewBlog } from '../services/notificationService.js';
 import mongoose from "mongoose";
+import { inngest } from "../inngest/index.js";
 
-/**
- * Send email notifications for a newly published blog.
- * Non-blocking; does not throw.
- */
-function notifyNewBlogPublished(blog) {
-    const payload = {
-        id: blog._id,
-        title: blog.title,
-        subTitle: blog.subTitle,
-        category: blog.category,
-        image: blog.image,
-        createdAt: blog.createdAt
-    };
-    const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
-    notifySubscribersAboutNewBlog(payload, frontendURL).catch(error => {
-        console.error('Error sending email notifications:', error);
+const queueBlogSubmissionApprovalEmail = async (blog) => {
+    await inngest.send({
+        name: "app/blog.submitted",
+        data: {
+            blogId: blog._id.toString(),
+            title: blog.title,
+            authorName: blog.authorName,
+            authorEmail: blog.authorEmail,
+            category: blog.category,
+        },
     });
-}
+};
+
+const queueNewBlogPublishedEmail = async (blog) => {
+    await inngest.send({
+        name: "app/blog.published",
+        data: {
+            blogId: blog._id.toString(),
+            blogTitle: blog.title,
+            blogSubTitle: blog.subTitle,
+            blogCategory: blog.category,
+            blogImage: blog.image,
+        },
+    });
+};
 
 export const addBlog = async (req, res) => {
     try {
@@ -54,15 +61,40 @@ export const addBlog = async (req, res) => {
         const image = optimizedImageUrl;
         const imageKitFileId = response.fileId;
 
-        const newBlog = await Blog.create({ title, subTitle, description, category, image, imageKitFileId, isPublished })
+        const isUserSubmission = Boolean(req.authUser?.userId);
+        const shouldPublish = Boolean(isPublished) && !isUserSubmission;
+        const status = shouldPublish ? "published" : (isUserSubmission ? "pending" : "draft");
+        const authorName = isUserSubmission ? req.authUser.name : "Admin";
+        const authorId = isUserSubmission ? req.authUser.userId : "admin";
+        const authorEmail = isUserSubmission ? req.authUser.email : process.env.ADMIN_EMAIL;
 
-        if (isPublished) {
-            notifyNewBlogPublished(newBlog);
+        const newBlog = await Blog.create({
+            title,
+            subTitle,
+            description,
+            category,
+            image,
+            imageKitFileId,
+            isPublished: shouldPublish,
+            status,
+            authorName,
+            authorId,
+            authorEmail,
+            submittedAt: new Date(),
+            reviewedAt: shouldPublish ? new Date() : undefined,
+        });
+
+        if (isUserSubmission) {
+            await queueBlogSubmissionApprovalEmail(newBlog);
+        } else if (shouldPublish) {
+            await queueNewBlogPublishedEmail(newBlog);
         }
 
         res.json({
             success: true,
-            message: "Blog added successfully"
+            message: isUserSubmission
+                ? "Blog submitted for admin approval"
+                : "Blog added successfully"
         })
     } catch (error) {
         res.json({
@@ -97,6 +129,13 @@ export const getBlogById = async (req, res) => {
                 message: "Blog not found"
             })
         }
+        if (!blog.isPublished) {
+            return res.status(403).json({
+                success: false,
+                message: "This blog is not published yet",
+            });
+        }
+
         res.json({
             success: true,
             blog: blog
@@ -171,14 +210,19 @@ export const togglePublish = async (req, res) => {
         const currentStatus = currentBlog.isPublished === true || currentBlog.isPublished === 'true';
 
         // Toggle the isPublished status
+        const willBePublished = !currentStatus;
         const updatedBlog = await Blog.findByIdAndUpdate(
             id,
-            { isPublished: !currentStatus },
+            {
+                isPublished: willBePublished,
+                status: willBePublished ? "published" : "draft",
+                reviewedAt: new Date(),
+            },
             { new: true } // Return the updated document
         );
 
         if (updatedBlog.isPublished && !currentStatus) {
-            notifyNewBlogPublished(updatedBlog);
+            await queueNewBlogPublishedEmail(updatedBlog);
         }
 
         res.json({
@@ -195,9 +239,96 @@ export const togglePublish = async (req, res) => {
     }
 }
 
+export const reviewBlogById = async (req, res) => {
+    try {
+        const { id, action } = req.body;
+
+        if (!id || !["approve", "reject"].includes(action)) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid blog id and action are required",
+            });
+        }
+
+        const blog = await Blog.findById(id);
+        if (!blog) {
+            return res.status(404).json({
+                success: false,
+                message: "Blog not found",
+            });
+        }
+
+        if (action === "approve") {
+            const updatedBlog = await Blog.findByIdAndUpdate(
+                id,
+                {
+                    isPublished: true,
+                    status: "published",
+                    reviewedAt: new Date(),
+                },
+                { new: true }
+            );
+
+            await queueNewBlogPublishedEmail(updatedBlog);
+
+            return res.json({
+                success: true,
+                message: "Blog approved and published successfully",
+                data: updatedBlog,
+            });
+        }
+
+        const updatedBlog = await Blog.findByIdAndUpdate(
+            id,
+            {
+                isPublished: false,
+                status: "rejected",
+                reviewedAt: new Date(),
+            },
+            { new: true }
+        );
+
+        return res.json({
+            success: true,
+            message: "Blog rejected successfully",
+            data: updatedBlog,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+export const getMyBlogs = async (req, res) => {
+    try {
+        const userId = req.authUser?.userId;
+        const blogs = await Blog.find({ authorId: userId }).sort({ createdAt: -1 });
+        return res.json({
+            success: true,
+            blogs,
+        });
+    } catch (error) {
+        return res.json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
 export const addComment = async (req, res) => {
     try {
-        const { blog, name, content } = req.body;
+        const { blog, content } = req.body;
+        const name = req.authUser?.name;
+
+        if (!blog || !content || !name) {
+            return res.status(400).json({
+                success: false,
+                message: "Blog, comment content, and authenticated user are required",
+            });
+        }
+
         const comment = await Comment.create({ blog, name, content });
         res.json({
             success: true,

@@ -62,12 +62,33 @@ export const AppProvider = ({ children }) => {
 
     useEffect(() => {
         fetchBlogs();
-        const token = localStorage.getItem('token');
-        if (token) {
-            setToken(token)
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-        }
     }, [])
+
+    useEffect(() => {
+        const setAuthHeader = async () => {
+            try {
+                if (user) {
+                    const clerkToken = await getToken()
+                    if (clerkToken) {
+                        axios.defaults.headers.common['Authorization'] = `Bearer ${clerkToken}`
+                        return
+                    }
+                }
+
+                const legacyToken = localStorage.getItem('token');
+                if (legacyToken) {
+                    setToken(legacyToken)
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${legacyToken}`
+                } else {
+                    delete axios.defaults.headers.common['Authorization']
+                }
+            } catch {
+                delete axios.defaults.headers.common['Authorization']
+            }
+        }
+
+        setAuthHeader()
+    }, [user, getToken])
 
     const value = { axios, navigate, token, setToken, blogs, setBlogs, input, setInput, fetchBlogs, fetchIsAdmin, user, getToken, isAdmin }
 
