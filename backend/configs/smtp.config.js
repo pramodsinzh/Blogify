@@ -1,5 +1,7 @@
 const SMTPConfig = {
-    smtpService: process.env.SMTP_PROVIDER ?? 'gmail', //optional
+    // Optional: only set `service` if explicitly provided.
+    // Defaulting to `gmail` can break setups like Brevo/SMTP relay.
+    smtpService: process.env.SMTP_PROVIDER,
     smtpHost: process.env.SMTP_HOST,
     smtpPort: process.env.SMTP_PORT,
     smtpUser: process.env.SMTP_USER,

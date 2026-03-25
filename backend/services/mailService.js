@@ -44,8 +44,21 @@ class EmailService {
             const result = await this.#transport.sendMail(messageBody);
             return result;
         } catch (exception) {
-            console.log(exception);
-            throw { code: 500, message: "Email sending failed...", status: "EMAIL_SENDING_FAILED" };
+            // Log the real underlying Nodemailer error for easier debugging in Inngest runs.
+            console.error("Email sending failed:", exception);
+
+            const details = {
+                message: exception?.message,
+                code: exception?.code,
+                response: exception?.response,
+            };
+
+            throw {
+                code: 500,
+                message: "Email sending failed...",
+                status: "EMAIL_SENDING_FAILED",
+                details,
+            };
         }
     }
 
