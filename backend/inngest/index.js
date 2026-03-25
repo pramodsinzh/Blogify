@@ -3,7 +3,7 @@ import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
 import emailService from "../services/mailService.js";
 
-export const inngest = new Inngest({ id: "blogify" });
+export const inngest = new Inngest({ id: "blog-post" });
 
 const getNameFromClerkPayload = ({ first_name, last_name, email_addresses }) => {
     const fullName = `${first_name ?? ""} ${last_name ?? ""}`.trim();
