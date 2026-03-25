@@ -72,33 +72,54 @@ const sendNewBlogNotifications = inngest.createFunction(
         });
 
         if (!subscribers.length) {
-            return { sent: 0, failed: 0 };
+            return { sent: 0, failed: 0, subscribersFound: 0, blogId, blogTitle };
         }
 
         const results = await step.run("send-new-blog-emails", async () => {
             return Promise.allSettled(
                 subscribers.map((subscriber) =>
-                    emailService.sendEmail({
-                        to: subscriber.email,
-                        subject: `New Blog Published: ${blogTitle}`,
-                        message: `
-                            <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-                                <h2>New Blog is Live!</h2>
-                                <p><strong>${blogTitle}</strong> has just been published.</p>
-                                ${blogSubTitle ? `<p>${blogSubTitle}</p>` : ""}
-                                ${blogCategory ? `<p><strong>Category:</strong> ${blogCategory}</p>` : ""}
-                                ${blogImage ? `<img src="${blogImage}" alt="${blogTitle}" style="max-width:100%;border-radius:8px;" />` : ""}
-                                <p style="margin-top:16px;"><a href="${blogURL}" target="_blank" rel="noopener noreferrer">Read the full blog</a></p>
-                            </div>
-                        `
-                    })
+                    emailService
+                        .sendEmail({
+                            to: subscriber.email,
+                            subject: `New Blog Published: ${blogTitle}`,
+                            message: `
+                                <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+                                    <h2>New Blog is Live!</h2>
+                                    <p><strong>${blogTitle}</strong> has just been published.</p>
+                                    ${blogSubTitle ? `<p>${blogSubTitle}</p>` : ""}
+                                    ${blogCategory ? `<p><strong>Category:</strong> ${blogCategory}</p>` : ""}
+                                    ${blogImage ? `<img src="${blogImage}" alt="${blogTitle}" style="max-width:100%;border-radius:8px;" />` : ""}
+                                    <p style="margin-top:16px;"><a href="${blogURL}" target="_blank" rel="noopener noreferrer">Read the full blog</a></p>
+                                </div>
+                            `,
+                        })
+                        .catch((err) => {
+                            // Attach the recipient so we can surface which emails failed.
+                            if (err && typeof err === "object") err.recipientEmail = subscriber.email;
+                            throw err;
+                        })
                 )
             );
         });
 
         const sent = results.filter((result) => result.status === "fulfilled").length;
         const failed = results.length - sent;
-        return { sent, failed };
+        const failedEntries = results
+            .filter((result) => result.status === "rejected")
+            .map((result) => ({
+                recipientEmail: result.reason?.recipientEmail ?? null,
+                message: result.reason?.message ?? null,
+                details: result.reason?.details ?? null,
+            }));
+
+        return {
+            sent,
+            failed,
+            subscribersFound: subscribers.length,
+            failedEntries,
+            blogId,
+            blogTitle,
+        };
     }
 );
 
