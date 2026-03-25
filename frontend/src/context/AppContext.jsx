@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import toast from "react-hot-toast";
+import { useAuth, useUser } from "@clerk/react";
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
@@ -11,10 +12,32 @@ export const AppProvider = ({ children }) => {
 
     const navigate = useNavigate();
 
+    const [isAdmin, setIsadmin] = useState(false)
+
+
     const [token, setToken] = useState(null)
     // AppContext.jsx
     const [blogs, setBlogs] = useState(null) // ✅ null = still fetching
     const [input, setInput] = useState("");
+
+    const {user} = useUser()
+    const {getToken} = useAuth()
+    const location = useLocation()
+
+    const fetchIsAdmin = async()=> {
+        try {
+            const {data} = await axios.get('/admin/is-admin', {headers: {Authorization: `Bearer ${await getToken()}`}})
+            setIsadmin(data.isAdmin)
+
+            if(!data.isAdmin && location.pathname.startsWith('/admin')){
+                navigate('/')
+                toast.error("You are not authorized to access the admin panel!")
+            }
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
 
     const fetchBlogs = async () => {
         try {
@@ -31,16 +54,43 @@ export const AppProvider = ({ children }) => {
         }
     }
 
+    useEffect(()=> {
+        if(user){
+            fetchIsAdmin()
+        }
+    }, [user])
+
     useEffect(() => {
         fetchBlogs();
-        const token = localStorage.getItem('token');
-        if (token) {
-            setToken(token)
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-        }
     }, [])
 
-    const value = { axios, navigate, token, setToken, blogs, setBlogs, input, setInput, fetchBlogs }
+    useEffect(() => {
+        const setAuthHeader = async () => {
+            try {
+                if (user) {
+                    const clerkToken = await getToken()
+                    if (clerkToken) {
+                        axios.defaults.headers.common['Authorization'] = `Bearer ${clerkToken}`
+                        return
+                    }
+                }
+
+                const legacyToken = localStorage.getItem('token');
+                if (legacyToken) {
+                    setToken(legacyToken)
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${legacyToken}`
+                } else {
+                    delete axios.defaults.headers.common['Authorization']
+                }
+            } catch {
+                delete axios.defaults.headers.common['Authorization']
+            }
+        }
+
+        setAuthHeader()
+    }, [user, getToken])
+
+    const value = { axios, navigate, token, setToken, blogs, setBlogs, input, setInput, fetchBlogs, fetchIsAdmin, user, getToken, isAdmin }
 
     return (
         <AppContext.Provider value={value}>

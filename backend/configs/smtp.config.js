@@ -3,7 +3,7 @@ const SMTPConfig = {
     smtpHost: process.env.SMTP_HOST,
     smtpPort: process.env.SMTP_PORT,
     smtpUser: process.env.SMTP_USER,
-    smtpPassword: process.env.SMTP_PASSWORD,
-    smtpFromAddress: process.env.SMTP_FROM,
+    smtpPass: process.env.SMTP_PASS,
+    smtpFromAddress: process.env.SENDER_EMAIL,
 }
 export default SMTPConfig

@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken'
 import Blog from '../models/blog.model.js';
 import Comment from '../models/comment.model.js';
 import Subscription from '../models/subscription.model.js';
+import { getAuth } from '@clerk/express';
+import User from '../models/user.model.js';
 
 export const adminLogin = async (req, res)=> {
     try {
@@ -163,4 +165,32 @@ export const deleteSubscriber = async (req, res) => {
         })
     }
 }
+
+export const isAdmin = async (req, res) => {
+    try {
+        const { userId } = getAuth(req);
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                isAdmin: false,
+                message: "Unauthorized",
+            });
+        }
+
+        const user = await User.findById(userId).select("email");
+        const userEmail = user?.email?.toLowerCase()?.trim();
+        const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase()?.trim();
+
+        return res.json({
+            success: true,
+            isAdmin: Boolean(userEmail && adminEmail && userEmail === adminEmail),
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+            isAdmin: false,
+        });
+    }
+};
 

@@ -1,10 +1,14 @@
 import React, { useRef } from 'react'
 import { assets } from '../assets/assets'
 import { useAppContext } from '../context/AppContext'
+import { useClerk, useUser } from '@clerk/react'
+import toast from 'react-hot-toast'
 
 const Header = () => {
-    const { input, setInput } = useAppContext()
+    const { input, setInput, navigate } = useAppContext()
     const inputRef = useRef()
+    const { user } = useUser()
+    const { openSignIn } = useClerk()
 
     const onSubmitHandler = (e) => {
         e.preventDefault()
@@ -13,6 +17,16 @@ const Header = () => {
     const onClear = () => {
       setInput('')
       inputRef.current.value = ''
+    }
+
+    const onAddBlogClick = () => {
+        if (user) {
+            navigate('/add-blog')
+            return
+        }
+
+        toast.error('Login first')
+        openSignIn()
     }
     
     return (
@@ -36,6 +50,19 @@ const Header = () => {
                    {input && <button onClick={onClear} className='border font-light text-xs py-1 px-3 rounded-sm shadow-custom-sm cursor-pointer'>Clear Search</button> }
                 </div>
                 <img src={assets.gradientBackground} className='absolute -top-50 -z-1 opacity-50' alt="" />
+
+            <div className="flex flex-col items-center justify-center my-10">
+                <p className="text-lg sm:text-xl font-medium text-primary mb-4">
+                    Have an inspiring story, idea, or insight? <span className="text-gray-700">Share your voice with the world!</span>
+                </p>
+                <button
+                    type="button"
+                    onClick={onAddBlogClick}
+                    className="inline-block bg-gradient-to-r from-primary to-teal-800 text-white font-semibold px-8 py-3 rounded-lg shadow hover:from-teal-800 hover:to-primary transition-all duration-300"
+                >
+                    Add Your Blog
+                </button>
+            </div>
             </div>
         </>
     )

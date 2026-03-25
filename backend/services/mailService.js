@@ -12,7 +12,7 @@ class EmailService {
                 service: SMTPConfig.smtpService, //optional
                 auth: {
                     user: SMTPConfig.smtpUser,
-                    pass: SMTPConfig.smtpPassword
+                    pass: SMTPConfig.smtpPass
                 }
             });
             console.log("SMTP server connected successfully.");
@@ -47,6 +47,29 @@ class EmailService {
             console.log(exception);
             throw { code: 500, message: "Email sending failed...", status: "EMAIL_SENDING_FAILED" };
         }
+    }
+
+    async sendBlogApprovalRequest({ blogTitle, authorName, authorEmail, category }) {
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (!adminEmail) return null;
+
+        return this.sendEmail({
+            to: adminEmail,
+            subject: `Blog Approval Required: ${blogTitle}`,
+            message: `
+                <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+                    <h2>New blog submitted for review</h2>
+                    <p>A new blog has been submitted and is waiting for admin review.</p>
+                    <ul>
+                        <li><strong>Title:</strong> ${blogTitle}</li>
+                        <li><strong>Author:</strong> ${authorName}</li>
+                        <li><strong>Email:</strong> ${authorEmail || "N/A"}</li>
+                        <li><strong>Category:</strong> ${category}</li>
+                    </ul>
+                    <p>Please review and publish it from the admin dashboard.</p>
+                </div>
+            `
+        });
     }
 }
 

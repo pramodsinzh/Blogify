@@ -1,141 +1,111 @@
-import { Inngest } from "inngest";  
-// import sendEmail from "../configs/nodeMailer.config.js";
+import { Inngest } from "inngest";
 import User from "../models/user.model.js";
+import Subscription from "../models/subscription.model.js";
+import emailService from "../services/mailService.js";
 
-// Create a client to send and receive events
-export const inngest = new Inngest({ id: "blog-post" });
+export const inngest = new Inngest({ id: "blogify" });
 
+const getNameFromClerkPayload = ({ first_name, last_name, email_addresses }) => {
+    const fullName = `${first_name ?? ""} ${last_name ?? ""}`.trim();
+    if (fullName) return fullName;
+    return email_addresses?.[0]?.email_address ?? "User";
+};
 
-//Inngest functions to manage user authentication and authorization
-//create user
 const syncUserCreation = inngest.createFunction(
-    { id: 'sync-user-from-clerk', triggers: { event: 'clerk/user.created' } },
+    { id: "sync-user-from-clerk", triggers: { event: "clerk/user.created" } },
     async ({ event }) => {
         const { id, email_addresses, image_url, first_name, last_name } = event.data;
-        const userDate = {
+        const userData = {
             _id: id,
-            name: `${first_name} ${last_name}`,
-            email: email_addresses[0].email_address,
-            image: image_url,
-        }
-        await User.create(userDate);
+            name: getNameFromClerkPayload({ first_name, last_name, email_addresses }),
+            email: email_addresses?.[0]?.email_address,
+            image: image_url ?? "",
+        };
+        await User.findByIdAndUpdate(id, userData, { upsert: true, new: true });
     }
-)
-//update user
+);
+
 const syncUserUpdate = inngest.createFunction(
-    { id: 'update-user-from-clerk', triggers: { event: 'clerk/user.updated' } },
+    { id: "update-user-from-clerk", triggers: { event: "clerk/user.updated" } },
     async ({ event }) => {
         const { id, email_addresses, image_url, first_name, last_name } = event.data;
-        const userDate = {
+        const userData = {
             _id: id,
-            name: `${first_name} ${last_name}`,
-            email: email_addresses[0].email_address,
-            image: image_url,
-        }
-        await User.findByIdAndUpdate(id, userDate);
+            name: getNameFromClerkPayload({ first_name, last_name, email_addresses }),
+            email: email_addresses?.[0]?.email_address,
+            image: image_url ?? "",
+        };
+        await User.findByIdAndUpdate(id, userData, { upsert: true, new: true });
     }
-)
-//delete user
+);
+
 const syncUserDeletion = inngest.createFunction(
-    { id: 'delete-user-with-clerk', triggers: { event: 'clerk/user.deleted' } },
+    { id: "delete-user-with-clerk", triggers: { event: "clerk/user.deleted" } },
     async ({ event }) => {
         const { id } = event.data;
-        await User.findByIdAndDelete(id)
+        await User.findByIdAndDelete(id);
     }
-)
+);
 
- /**
-//Inngest function to send approval email to the admin when user created a blog  
-const sendBookingConfirmationEmail = inngest.createFunction(
-    { id: 'send-booking-confirmation-email', triggers: { event: 'app/show.booked' } },
-    async ({ event, step }) => {
-        const { bookingId } = event.data;
-
-        const booking = await Booking.findById(bookingId).populate({
-            path: "show",
-            populate: { path: "movie", model: "Movie" }
-        }).populate("user");
-
-        if (!booking) {
-            console.log('send-booking-confirmation-email: booking not found', { bookingId });
-            return;
-        }
-
-        await step.run('send-booking-confirmation-email', async () => {
-            await sendEmail({
-                to: booking.user.email,
-                subject: `Payment Confirmation: "${booking.show.movie.title}" booked!`,
-                body: `
-                <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-                  <h2>Hi ${booking.user.name || booking.user.email},</h2>
-                  <p>Your booking for <strong style="color: #F84565;">${booking.show.movie.title}</strong> is confirmed.</p>
-                  <p>
-                    <strong>Date:</strong> ${new Date(booking.show.showDateTime).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' })}<br/>
-                    <strong>Time:</strong> ${new Date(booking.show.showDateTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Kathmandu' })}
-                  </p>
-                  <p>Please arrive 10 minutes before the show.</p>
-                  <p>Enjoy the show!</p>
-                  <p>Thanks for booking with us!<br/> ShowTimeX Team</p>
-                </div>
-            `
-            })
+const sendBlogSubmissionForApproval = inngest.createFunction(
+    { id: "send-blog-submission-for-approval", triggers: { event: "app/blog.submitted" } },
+    async ({ event }) => {
+        const { title, authorName, authorEmail, category } = event.data;
+        await emailService.sendBlogApprovalRequest({
+            blogTitle: title,
+            authorName,
+            authorEmail,
+            category,
         });
     }
-)
+);
 
- 
-//function to send notification when a new blog is posted 
-const sendNewShowNotifications = inngest.createFunction(
-    { id: 'send-new-show-notifications', triggers: { event: 'app/show.added' } },
+const sendNewBlogNotifications = inngest.createFunction(
+    { id: "send-new-blog-notifications", triggers: { event: "app/blog.published" } },
     async ({ event, step }) => {
-        const { movieTitle } = event.data;
+        const { blogId, blogTitle, blogSubTitle, blogCategory, blogImage } = event.data;
+        const frontendURL = process.env.FRONTEND_URL || "http://localhost:5173";
+        const blogURL = `${frontendURL}/blog/${blogId}`;
 
-        const users = await step.run('load-users-for-notification', async () => {
-            return await User.find({ email: { $exists: true, $ne: "" } }).select("name email");
+        const subscribers = await step.run("load-active-subscribers", async () => {
+            return Subscription.find({ isActive: true }).select("email");
         });
 
-        const tasks = users
-            .filter(u => !!u.email)
-            .map(u => ({
-                userEmail: u.email,
-                userName: u.name,
-            }));
-
-        if (tasks.length === 0) {
-            return { sent: 0, failed: 0, skipped: 0, message: "No users with email found; nothing to notify." };
+        if (!subscribers.length) {
+            return { sent: 0, failed: 0 };
         }
 
-        const results = await step.run('send-new-show-emails', async () => {
-            return await Promise.allSettled(
-                tasks.map(task =>
-                    sendEmail({
-                        to: task.userEmail,
-                        subject: `🎬 New Show Added: ${movieTitle}`,
-                        body: `
-                <div style="font-family: sans-serif; max-width: 400px; margin: auto; background: #f7f7f7; padding: 32px 24px; border-radius: 12px; box-shadow: 0 2px 8px #0001;">
-                    <h2 style="color: #23272F; margin-top: 0;">A New Show Has Been Added!</h2>
-                    <p style="margin: 16px 0; font-size: 16px; color: #282828;">
-                        Hello${task.userName ? ` ${task.userName}` : ''},
-                    </p>
-                    <p style="margin: 12px 0 24px; font-size: 16px; color: #323232;">
-                        We're excited to let you know that <strong>${movieTitle}</strong> has just been added to our listings.
-                    </p>
-                    <p style="color: #878ea3; font-size: 14px; margin-bottom:0;">
-                        Book your seat now and enjoy the show!
-                    </p>
-                </div>
-            `,
+        const results = await step.run("send-new-blog-emails", async () => {
+            return Promise.allSettled(
+                subscribers.map((subscriber) =>
+                    emailService.sendEmail({
+                        to: subscriber.email,
+                        subject: `New Blog Published: ${blogTitle}`,
+                        message: `
+                            <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+                                <h2>New Blog is Live!</h2>
+                                <p><strong>${blogTitle}</strong> has just been published.</p>
+                                ${blogSubTitle ? `<p>${blogSubTitle}</p>` : ""}
+                                ${blogCategory ? `<p><strong>Category:</strong> ${blogCategory}</p>` : ""}
+                                ${blogImage ? `<img src="${blogImage}" alt="${blogTitle}" style="max-width:100%;border-radius:8px;" />` : ""}
+                                <p style="margin-top:16px;"><a href="${blogURL}" target="_blank" rel="noopener noreferrer">Read the full blog</a></p>
+                            </div>
+                        `
                     })
                 )
             );
         });
 
-        const sent = results.filter(r => r.status === 'fulfilled').length;
+        const sent = results.filter((result) => result.status === "fulfilled").length;
         const failed = results.length - sent;
-
-        return { sent, failed, message: `New show notifications: ${sent} sent, ${failed} failed.` };
+        return { sent, failed };
     }
-)
+);
 
-*/
-export const functions = [syncUserCreation, syncUserDeletion, syncUserUpdate];
+export const functions = [
+    syncUserCreation,
+    syncUserDeletion,
+    syncUserUpdate,
+    sendBlogSubmissionForApproval,
+    sendNewBlogNotifications,
+];
