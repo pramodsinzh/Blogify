@@ -1,6 +1,7 @@
 import { Inngest } from "inngest";
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
+import BlogNotification from "../models/blogNotification.model.js";
 import emailService from "../services/mailService.js";
 
 export const inngest = new Inngest({ id: "blog-post" });
@@ -64,6 +65,7 @@ const sendNewBlogNotifications = inngest.createFunction(
     { id: "send-new-blog-notifications", triggers: { event: "app/blog.published" } },
     async ({ event, step }) => {
         const { blogId, blogTitle, blogSubTitle, blogCategory, blogImage } = event.data;
+        const eventType = "app/blog.published";
         const frontendURL = process.env.FRONTEND_URL || "http://localhost:5173";
         const blogURL = `${frontendURL}/blog/${blogId}`;
 
@@ -71,13 +73,67 @@ const sendNewBlogNotifications = inngest.createFunction(
             return Subscription.find({ isActive: true }).select("email");
         });
 
-        if (!subscribers.length) {
-            return { sent: 0, failed: 0, subscribersFound: 0, blogId, blogTitle };
+        // Signed-in users are stored in the `User` collection via your Clerk sync functions.
+        // These users should receive notifications even if they never subscribed to the newsletter.
+        const users = await step.run("load-signed-in-users", async () => {
+            return User.find({ email: { $exists: true, $ne: "" } }).select("email");
+        });
+
+        // Combine newsletter subscribers + signed-in users, dedupe by email (case-insensitive).
+        const recipients = Array.from(
+            new Map(
+                [...(subscribers ?? []), ...(users ?? [])]
+                    .filter((r) => r?.email)
+                    .map((r) => {
+                        const normalizedEmail = String(r.email).trim().toLowerCase();
+                        return [normalizedEmail, { email: normalizedEmail }];
+                    })
+            ).values()
+        );
+
+        if (!recipients.length) {
+            return {
+                sent: 0,
+                failed: 0,
+                subscribersFound: subscribers.length,
+                signedInUsersFound: users.length,
+                recipientsFound: 0,
+                blogId,
+                blogTitle,
+            };
+        }
+
+        // Idempotency: if this exact blog+recipient+event already succeeded, skip sending again.
+        // This prevents double emails when Inngest retries or the event is emitted twice.
+        const recipientEmails = recipients.map((r) => r.email);
+        const alreadySent = await step.run("load-already-sent-notifications", async () => {
+            return BlogNotification.find({
+                blogId,
+                eventType,
+                email: { $in: recipientEmails },
+            }).select("email");
+        });
+        const alreadySentSet = new Set(alreadySent.map((d) => d.email));
+
+        const recipientsToSend = recipients.filter((r) => !alreadySentSet.has(r.email));
+        const skippedAlreadySent = recipients.length - recipientsToSend.length;
+
+        if (!recipientsToSend.length) {
+            return {
+                sent: 0,
+                failed: 0,
+                subscribersFound: subscribers.length,
+                signedInUsersFound: users.length,
+                recipientsFound: recipients.length,
+                skippedAlreadySent,
+                blogId,
+                blogTitle,
+            };
         }
 
         const results = await step.run("send-new-blog-emails", async () => {
             return Promise.allSettled(
-                subscribers.map((subscriber) =>
+                recipientsToSend.map((subscriber) =>
                     emailService
                         .sendEmail({
                             to: subscriber.email,
@@ -112,10 +168,36 @@ const sendNewBlogNotifications = inngest.createFunction(
                 details: result.reason?.details ?? null,
             }));
 
+        // Record successful deliveries so future retries won't double-email.
+        // allSettled preserves order with the input promises, so we can map back safely.
+        const successfulRecipientEmails = results
+            .map((r, idx) => (r.status === "fulfilled" ? recipientsToSend[idx].email : null))
+            .filter((v) => v !== null);
+
+        if (successfulRecipientEmails.length) {
+            await step.run("record-sent-notifications", async () => {
+                const docs = successfulRecipientEmails.map((email) => ({
+                    blogId,
+                    email,
+                    eventType,
+                }));
+                try {
+                    await BlogNotification.insertMany(docs, { ordered: false });
+                } catch (err) {
+                    // Ignore duplicates if concurrent runs insert the same record.
+                    if (err && (err.code === 11000 || err.name === "MongoServerError")) return;
+                    throw err;
+                }
+            });
+        }
+
         return {
             sent,
             failed,
             subscribersFound: subscribers.length,
+            signedInUsersFound: users.length,
+            recipientsFound: recipients.length,
+            skippedAlreadySent,
             failedEntries,
             blogId,
             blogTitle,
