@@ -1,94 +1,97 @@
-Blogify
-=======
+# Blogify
 
-A full‑stack blogging platform with a modern frontend and a Node.js backend. Blogify lets users create, edit, and manage blog posts with a smooth developer and reader experience.
+A full-stack blogging platform: public reading, signed-in authors, an admin area, comments, newsletter signup, and contact. The app uses **React** with **Vite** on the front end and **Express** with **MongoDB** on the back end, with **Clerk** for authentication.
 
 ## Features
 
-- **Modern UI**: Clean, responsive frontend built in the `frontend` app.
-- **API‑driven backend**: Dedicated `backend` service for posts, users, and other resources.
-- **Full‑stack dev workflow**: Single command to run frontend and backend together.
-- **Developer‑friendly setup**: Simple scripts and clear structure for local development.
+- **Public site**: Home, blog listing and detail pages, About, FAQs, and a contact form.
+- **Authors (Clerk)**: Sign in to create posts, manage “my blogs,” and comment on posts.
+- **Admin dashboard**: JWT-protected routes under `/admin` for managing posts, comments, and newsletter subscribers (separate from Clerk user flows).
+- **Rich editing**: Quill editor, Markdown rendering, image uploads (ImageKit when configured).
+- **AI-assisted writing**: Optional Google Gemini integration for content generation from the admin/blog flows.
+- **Email & automation**: Nodemailer for transactional mail; **Inngest** for workflows (for example Clerk user sync and blog notifications) when configured.
 
-## Tech Stack
+## Tech stack
 
-- **Frontend**: JavaScript (see `frontend` folder for framework and tooling)
-- **Backend**: Node.js (see `backend` folder for framework and database details)
-- **Tooling**: `npm`, `concurrently` for running both apps in parallel
+| Layer | Technologies |
+|--------|----------------|
+| **Frontend** | React 19, Vite 7, React Router 7, Tailwind CSS 4, Axios, Clerk (`@clerk/react`), Quill, Motion |
+| **Backend** | Express 5, Mongoose (MongoDB), Clerk (`@clerk/express`), Multer, JWT, Inngest, Nodemailer |
+| **Integrations** | Clerk (auth), ImageKit (images), Google Gemini (optional AI), SMTP (optional mail) |
+| **Monorepo scripts** | Root `package.json` uses `concurrently` to run the frontend dev server and backend together |
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- **Node.js** (LTS recommended) and **npm**
+- **MongoDB** reachable at the URI you set in `.env` (local or Atlas)
 
-- **Node.js** (LTS recommended)
-- **npm** (comes with Node)
-
-### Installation
+## Installation
 
 ```bash
 git clone https://github.com/pramodsinzh/Blogify.git
 cd Blogify
 npm install
-```
-
-Then install dependencies for the frontend and backend (from the project root):
-
-```bash
 cd frontend && npm install
 cd ../backend && npm install
 ```
 
-## Running the App
+The root `npm install` only installs shared tooling (for example `concurrently`). Install dependencies in `frontend` and `backend` as above.
 
-From the project root:
+## Environment variables
 
-- **Run frontend only**:
+### Backend (`backend/.env`)
 
-  ```bash
-  npm run dev:frontend
-  ```
+Copy the example file and adjust values:
 
-- **Run backend only**:
+```bash
+cp backend/.env.example backend/.env
+```
 
-  ```bash
-  npm run server:backend
-  ```
+`backend/.env.example` documents core settings: `PORT`, `MONGODB_URI`, admin credentials, `JWT_SECRET`, and `CONTACT_EMAIL`. For a full local setup you will also need:
 
-- **Run full project (frontend + backend together)**:
+- **Clerk**: Secret and publishable keys as required by [@clerk/express](https://clerk.com/docs/references/backend/overview) (typically `CLERK_SECRET_KEY` and related Clerk env vars from your Clerk dashboard).
+- **Optional**: `GEMINI_API_KEY`, ImageKit (`IMAGEKIT_PRIVATE_KEY`), SMTP variables for mail, and Inngest configuration if you use those features.
 
-  ```bash
-  npm run project
-  ```
+The API default port is **3001** if `PORT` is unset.
 
-Check your terminal output for the exact ports (commonly something like `http://localhost:3000` for frontend and another port for backend).
+### Frontend (`frontend/.env`)
 
-## Project Structure
+Create `frontend/.env` with:
+
+- `VITE_CLERK_PUBLISHABLE_KEY` — Clerk publishable key for the React app.
+- `VITE_BASE_URL` — Base URL of the backend API (for example `http://localhost:3001` during local development).
+
+Vite’s dev server defaults to **http://localhost:5173** unless you change it in `vite.config.js`.
+
+## Running the app
+
+From the **project root**:
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev:frontend` | Vite dev server (frontend only) |
+| `npm run server:backend` | Express API with nodemon (backend only) |
+| `npm run project` | Frontend + backend together |
+
+Production-style commands: `npm run start:frontend` and `npm run start:backend`.
+
+## Project structure
 
 ```text
 Blogify/
-  frontend/   # Frontend application
-  backend/    # Backend API / server
-  package.json
+  frontend/     # Vite + React app (pages, components, admin UI)
+  backend/      # Express API, models, routes, Inngest functions
+  package.json  # Root scripts and concurrently
   README.md
 ```
-
-See the `frontend` and `backend` directories for more detailed, framework‑specific documentation (components, routes, models, etc.).
-
-## Scripts (root)
-
-- **`npm run start:frontend`**: Start the frontend in production/start mode.
-- **`npm run start:backend`**: Start the backend in production/start mode.
-- **`npm run dev:frontend`**: Run the frontend in development mode.
-- **`npm run server:backend`**: Run the backend dev server.
-- **`npm run project`**: Run frontend and backend together using `concurrently`.
 
 ## Contributing
 
 1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
+2. Create a branch for your feature or fix.
 3. Commit and push your changes.
-4. Open a pull request with a clear description of your changes.
+4. Open a pull request with a clear description of what changed and why.
 
 ## License
 
-This project is licensed under the **ISC** license. See the `LICENSE` file if present, or the license section in `package.json`.
+This project is licensed under the **ISC** license (see `package.json`).
